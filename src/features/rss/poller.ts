@@ -13,8 +13,8 @@ const MAX_POSTS_PER_FETCH = 10;
 /** Keeps a message under Discord's 6000-character embed limit */
 const EMBEDS_PER_MESSAGE = 5;
 /**
- * Max keys kept in feeds.seen_keys. Keeping it well above the feed size prevents reposting
- * items that briefly drop out of the feed and come back
+ * Max keys kept in feeds.seen_keys (or the feed size, if larger). Keeping it above the feed size
+ * prevents reposting items that briefly drop out of the feed and come back
  */
 const MAX_SEEN_KEYS = 200;
 /** Queue sendBatch limit */
@@ -91,13 +91,17 @@ export async function processFeed(feedId: number, env: Env): Promise<void> {
   await postItems(env, subscriptions, oldestFirst(fresh).slice(-MAX_POSTS_PER_FETCH), feedTitle);
 }
 
-/** Current keys first, then previous keys, truncated to `limit` */
+/**
+ * Current keys first, then previous keys, truncated to `limit`.
+ * All current keys are always kept, otherwise items beyond the limit in a large feed would be
+ * treated as new on every fetch.
+ */
 export function mergeSeenKeys(
   current: readonly string[],
   previous: readonly string[],
   limit = MAX_SEEN_KEYS,
 ): string[] {
-  return [...new Set([...current, ...previous])].slice(0, limit);
+  return [...new Set([...current, ...previous])].slice(0, Math.max(limit, current.length));
 }
 
 async function postItems(

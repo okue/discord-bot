@@ -10,6 +10,10 @@ describe("mergeSeenKeys", () => {
     expect(mergeSeenKeys(["d", "c"], ["b", "a"], 3)).toEqual(["d", "c", "b"]);
   });
 
+  it("keeps all current keys even when they exceed the limit", () => {
+    expect(mergeSeenKeys(["e", "d", "c"], ["b", "a"], 2)).toEqual(["e", "d", "c"]);
+  });
+
   it("keeps previous keys when the feed is temporarily empty", () => {
     expect(mergeSeenKeys([], ["b", "a"])).toEqual(["b", "a"]);
   });

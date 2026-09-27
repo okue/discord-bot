@@ -95,7 +95,7 @@ Slash commands are registered globally, so they appear in every server the bot i
 ### Deduplication
 
 - Item keys are `guid` / Atom `id`, falling back to `link`.
-- Seen keys are stored in `feeds.seen_keys` as a JSON array, newest first, capped at 200. Previous keys are kept so that items briefly dropping out of the feed are not reposted.
+- Seen keys are stored in `feeds.seen_keys` as a JSON array, newest first, capped at 200 (or the feed size, if larger). Previous keys are kept so that items briefly dropping out of the feed are not reposted.
 - On subscribe, all current items are marked as seen.
 - Seen keys are saved **before** posting. Failed posts are not retried: missed items are acceptable, duplicate posts are avoided.
 - Queues guarantees at-least-once delivery, so a duplicate post is still possible if the same message is processed concurrently. This is rare and accepted.
