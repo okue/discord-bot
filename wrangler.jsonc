@@ -1,0 +1,35 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "discord-bot",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-27",
+  "observability": { "enabled": true },
+  "triggers": {
+    // Enqueue due feeds every 5 minutes
+    "crons": ["*/5 * * * *"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "discord-bot",
+      "database_id": "12d63000-5a96-4ce4-b948-2c7d34673160",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "queues": {
+    "producers": [{ "binding": "JOB_QUEUE", "queue": "discord-bot-jobs" }],
+    "consumers": [
+      {
+        "queue": "discord-bot-jobs",
+        "max_batch_size": 5,
+        "max_retries": 3
+      }
+    ]
+  },
+  "vars": {
+    // From Discord Developer Portal → General Information
+    "DISCORD_APPLICATION_ID": "1553435033056977006",
+    "DISCORD_PUBLIC_KEY": "a22d402f3414f46d5cb3e83a441ec719d9884ca74db4cf67fbe86f7e50373892"
+  }
+  // Secret: DISCORD_BOT_TOKEN (set with `wrangler secret put DISCORD_BOT_TOKEN`)
+}
