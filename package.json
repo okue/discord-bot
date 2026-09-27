@@ -7,7 +7,7 @@
     "dev": "wrangler dev --test-scheduled",
     "deploy": "wrangler deploy",
     "cf-typegen": "wrangler types --include-env=false",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "pnpm cf-typegen && tsc --noEmit",
     "test": "vitest run",
     "db:migrate:local": "wrangler d1 migrations apply discord-bot --local",
     "db:migrate:remote": "wrangler d1 migrations apply discord-bot --remote"

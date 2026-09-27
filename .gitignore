@@ -3,3 +3,4 @@ node_modules/
 .dev.vars
 dist/
 .idea/
+worker-configuration.d.ts
