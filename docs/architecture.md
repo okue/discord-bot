@@ -105,6 +105,7 @@ Slash commands are registered globally, so they appear in every server the bot i
 - At most 10 new items per fetch, oldest first; the rest are marked as seen.
 - Items are posted as plain text, the bold title and the URL on the next line, so Discord unfurls each link (with thumbnail). Up to 5 items per message, to keep the number of posts per fetch low.
 - `/rss add` posts a welcome message to the channel; if the bot cannot post there, the subscription is rolled back.
+- `/rss preview` posts the latest items with the same formatting, without touching the database. Useful to check how notifications look.
 
 ## Data model
 

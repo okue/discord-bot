@@ -13,6 +13,7 @@ Posts new articles from RSS / Atom feeds to Discord channels.
 | `/rss add <url>` | Subscribe the current channel to a feed |
 | `/rss remove <url>` | Unsubscribe the current channel from a feed (with autocomplete) |
 | `/rss list` | List all subscriptions in the server |
+| `/rss preview <url> [count]` | Post the latest articles of a feed to the current channel, formatted as notifications (default 1, up to 10). Does not change subscriptions |
 
 - New articles are checked about every 10 minutes.
 - Only articles that appear in the feed after subscribing are posted.

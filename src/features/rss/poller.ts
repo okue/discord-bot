@@ -110,8 +110,7 @@ async function postItems(
 ): Promise<void> {
   if (items.length === 0) return;
   const rest = new DiscordRest(env.DISCORD_BOT_TOKEN);
-  // Discord shows a link preview (with thumbnail) for each URL in a message
-  const messages = packMessages(items.map(toMessageContent), ITEMS_PER_MESSAGE);
+  const messages = toMessages(items);
 
   for (const sub of subscriptions) {
     try {
@@ -128,8 +127,14 @@ async function postItems(
   }
 }
 
+/** Message contents for items, as posted to channels */
+export function toMessages(items: readonly FeedItem[]): string[] {
+  // Discord shows a link preview (with thumbnail) for each URL in a message
+  return packMessages(items.map(toMessageContent), ITEMS_PER_MESSAGE);
+}
+
 /** Sort by date if every item has one; otherwise reverse feed order (usually newest first) */
-function oldestFirst(items: readonly FeedItem[]): FeedItem[] {
+export function oldestFirst(items: readonly FeedItem[]): FeedItem[] {
   if (items.every((item) => item.publishedAt !== undefined)) {
     return [...items].sort((a, b) => (a.publishedAt ?? 0) - (b.publishedAt ?? 0));
   }
