@@ -103,7 +103,7 @@ Slash commands are registered globally, so they appear in every server the bot i
 ### Posting
 
 - At most 10 new items per fetch, oldest first; the rest are marked as seen.
-- Items are posted as embeds, 5 per message (Discord's 6000-character embed limit).
+- Each item is posted as its own plain message: the bold title and the URL on the next line, so Discord unfurls the link (with thumbnail).
 - `/rss add` posts a welcome message to the channel; if the bot cannot post there, the subscription is rolled back.
 
 ## Data model
