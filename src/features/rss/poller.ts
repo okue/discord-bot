@@ -2,7 +2,7 @@ import { Routes } from "discord-api-types/v10";
 import { DiscordRest } from "../../core/rest";
 import type { Env } from "../../env";
 import { FeedFetchError, fetchFeed } from "./fetcher";
-import { toEmbed } from "./formatter";
+import { packMessages, toMessageContent } from "./formatter";
 import { type FeedItem, FeedParseError, type ParsedFeed, parseFeed } from "./parser";
 import { RssRepository, type SubscriptionRow, parseSeenKeys } from "./repository";
 
@@ -10,8 +10,8 @@ export const FETCH_INTERVAL_MS = 10 * 60 * 1000;
 const MAX_BACKOFF_MS = 24 * 60 * 60 * 1000;
 /** Max items posted per fetch. The rest are marked as seen */
 const MAX_POSTS_PER_FETCH = 10;
-/** Keeps a message under Discord's 6000-character embed limit */
-const EMBEDS_PER_MESSAGE = 5;
+/** Keeps posts per fetch low (queue subrequest limit, Discord rate limit) */
+const ITEMS_PER_MESSAGE = 5;
 /**
  * Max keys kept in feeds.seen_keys (or the feed size, if larger). Keeping it above the feed size
  * prevents reposting items that briefly drop out of the feed and come back
@@ -87,8 +87,7 @@ export async function processFeed(feedId: number, env: Env): Promise<void> {
     seenKeys: mergeSeenKeys(parsed.items.map((item) => item.key), previousKeys),
   });
 
-  const feedTitle = parsed.title ?? feed.title ?? feed.url;
-  await postItems(env, subscriptions, oldestFirst(fresh).slice(-MAX_POSTS_PER_FETCH), feedTitle);
+  await postItems(env, subscriptions, oldestFirst(fresh).slice(-MAX_POSTS_PER_FETCH));
 }
 
 /**
@@ -108,17 +107,17 @@ async function postItems(
   env: Env,
   subscriptions: readonly SubscriptionRow[],
   items: readonly FeedItem[],
-  feedTitle: string,
 ): Promise<void> {
   if (items.length === 0) return;
   const rest = new DiscordRest(env.DISCORD_BOT_TOKEN);
-  const embeds = items.map((item) => toEmbed(item, feedTitle));
+  // Discord shows a link preview (with thumbnail) for each URL in a message
+  const messages = packMessages(items.map(toMessageContent), ITEMS_PER_MESSAGE);
 
   for (const sub of subscriptions) {
     try {
-      for (let i = 0; i < embeds.length; i += EMBEDS_PER_MESSAGE) {
+      for (const content of messages) {
         await rest.post(Routes.channelMessages(sub.channel_id), {
-          embeds: embeds.slice(i, i + EMBEDS_PER_MESSAGE),
+          content,
           allowed_mentions: { parse: [] },
         });
       }
