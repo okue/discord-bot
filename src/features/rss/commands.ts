@@ -17,10 +17,11 @@ import type { Env } from "../../env";
 import { FeedFetchError, fetchFeed, normalizeFeedUrl } from "./fetcher";
 import { truncate } from "./formatter";
 import { FeedParseError, parseFeed } from "./parser";
-import { FETCH_INTERVAL_MS, mergeSeenKeys } from "./poller";
+import { FETCH_INTERVAL_MS, mergeSeenKeys, oldestFirst, toMessages } from "./poller";
 import { RssRepository } from "./repository";
 
 const MESSAGE_MAX_LENGTH = 2000;
+const PREVIEW_MAX_ITEMS = 10;
 
 export const rssCommand: Command = {
   definition: {
@@ -62,6 +63,26 @@ export const rssCommand: Command = {
         name: "list",
         description: "このサーバーの購読一覧を表示します",
       },
+      {
+        type: ApplicationCommandOptionType.Subcommand,
+        name: "preview",
+        description: "フィードの最新記事を、通知と同じ形式でこのチャンネルに投稿します（購読状態は変わりません）",
+        options: [
+          {
+            type: ApplicationCommandOptionType.String,
+            name: "url",
+            description: "RSS / Atom フィードの URL",
+            required: true,
+          },
+          {
+            type: ApplicationCommandOptionType.Integer,
+            name: "count",
+            description: `投稿する件数（既定 1、最大 ${PREVIEW_MAX_ITEMS}）`,
+            min_value: 1,
+            max_value: PREVIEW_MAX_ITEMS,
+          },
+        ],
+      },
     ],
   },
 
@@ -77,6 +98,8 @@ export const rssCommand: Command = {
         return remove(guildId, interaction.channel.id, sub.options, ctx.env);
       case "list":
         return list(guildId, ctx.env);
+      case "preview":
+        return preview(interaction, sub.options, ctx);
       default:
         return ephemeral("未対応のサブコマンドです。");
     }
@@ -222,6 +245,57 @@ async function list(guildId: string, env: Env): Promise<APIInteractionResponse> 
     return `- <#${s.channel_id}> **${s.title ?? s.url}**\n  <${s.url}>${warning}`;
   });
   return ephemeral(truncate(lines.join("\n"), MESSAGE_MAX_LENGTH));
+}
+
+function preview(
+  interaction: APIChatInputApplicationCommandInteraction,
+  options: OptionLike[],
+  ctx: AppContext,
+): APIInteractionResponse {
+  const url = normalizeFeedUrl(getStringOption(options, "url") ?? "");
+  if (!url) return ephemeral("http(s) の URL を指定してください。");
+  const count = Number(getStringOption(options, "count") ?? 1);
+
+  ctx.waitUntil(
+    postPreview(ctx.env, url, interaction.channel.id, count)
+      .catch((error: unknown) => {
+        console.error("rss preview failed", error);
+        return "❌ エラーが発生しました。時間をおいて再度お試しください。";
+      })
+      .then((message) => editOriginalResponse(ctx.env, interaction.token, message)),
+  );
+  return deferredEphemeral();
+}
+
+/** Posts the latest items as the poller would, without touching the database */
+async function postPreview(env: Env, url: string, channelId: string, count: number): Promise<string> {
+  let parsed;
+  try {
+    const result = await fetchFeed(url);
+    if (result.status !== "ok") throw new FeedFetchError("unexpected 304");
+    parsed = parseFeed(result.body);
+  } catch (error) {
+    if (error instanceof FeedFetchError || error instanceof FeedParseError) {
+      return `❌ フィードを読み込めませんでした: ${error.message}`;
+    }
+    throw error;
+  }
+
+  const items = oldestFirst(parsed.items).slice(-count);
+  if (items.length === 0) return "ℹ️ フィードに記事がありません。";
+
+  const rest = new DiscordRest(env.DISCORD_BOT_TOKEN);
+  try {
+    for (const content of toMessages(items)) {
+      await rest.post(Routes.channelMessages(channelId), { content, allowed_mentions: { parse: [] } });
+    }
+  } catch (error) {
+    if (error instanceof DiscordApiError && (error.status === 403 || error.status === 404)) {
+      return `❌ <#${channelId}> に投稿できません。Bot にチャンネルの閲覧・送信権限があるか確認してください。`;
+    }
+    throw error;
+  }
+  return `👀 **${parsed.title ?? url}** の最新 ${items.length} 件を投稿しました。`;
 }
 
 /** Choices for `/rss remove`: subscriptions in the current channel */

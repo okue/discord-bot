@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mergeSeenKeys } from "../src/features/rss/poller";
+import { mergeSeenKeys, oldestFirst, toMessages } from "../src/features/rss/poller";
 
 describe("mergeSeenKeys", () => {
   it("puts current keys first, followed by unique previous keys", () => {
@@ -16,5 +16,28 @@ describe("mergeSeenKeys", () => {
 
   it("keeps previous keys when the feed is temporarily empty", () => {
     expect(mergeSeenKeys([], ["b", "a"])).toEqual(["b", "a"]);
+  });
+});
+
+describe("oldestFirst", () => {
+  it("sorts by date when every item has one", () => {
+    const items = [
+      { key: "b", publishedAt: 2 },
+      { key: "a", publishedAt: 1 },
+    ];
+    expect(oldestFirst(items).map((i) => i.key)).toEqual(["a", "b"]);
+  });
+
+  it("reverses feed order when a date is missing", () => {
+    expect(oldestFirst([{ key: "new", publishedAt: 2 }, { key: "old" }]).map((i) => i.key)).toEqual(["old", "new"]);
+  });
+});
+
+describe("toMessages", () => {
+  it("packs up to 5 items per message", () => {
+    const items = Array.from({ length: 6 }, (_, i) => ({ key: `${i}`, title: `T${i}`, link: `https://ex.com/${i}` }));
+    const messages = toMessages(items);
+    expect(messages).toHaveLength(2);
+    expect(messages[1]).toBe("**T5**\nhttps://ex.com/5");
   });
 });
