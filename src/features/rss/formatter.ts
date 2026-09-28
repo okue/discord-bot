@@ -49,10 +49,28 @@ function formatTitle(text: string): string {
   let result = "";
   let last = 0;
   for (const match of text.matchAll(URL_IN_TEXT)) {
-    result += escapeMarkdown(text.slice(last, match.index)) + `<${match[0]}>`;
-    last = match.index + match[0].length;
+    const url = trimUrl(match[0]);
+    result += escapeMarkdown(text.slice(last, match.index)) + `<${url}>`;
+    last = match.index + url.length;
   }
   return result + escapeMarkdown(text.slice(last));
+}
+
+/** Drops trailing punctuation and unbalanced `)`, like GitHub autolinks: "(see https://a/b)." */
+function trimUrl(url: string): string {
+  let end = url.length;
+  const open = [...url].filter((c) => c === "(").length;
+  let close = [...url].filter((c) => c === ")").length;
+  while (end > 0) {
+    const c = url.charAt(end - 1);
+    if (c === ")" && close > open) {
+      close--;
+    } else if (!".,!?:;'\"".includes(c)) {
+      break;
+    }
+    end--;
+  }
+  return url.slice(0, end);
 }
 
 function escapeMarkdown(text: string): string {

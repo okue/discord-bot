@@ -17,7 +17,13 @@ describe("toMessageContent", () => {
   it("neutralizes masked links and URLs in the title", () => {
     expect(
       toMessageContent({ key: "k", title: "Update [click](https://evil.example/x) <@1>", link: "https://example.com/" }),
-    ).toBe("**Update \\[click\\]\\(<https://evil.example/x)> \\<@1\\>**\nhttps://example.com/");
+    ).toBe("**Update \\[click\\]\\(<https://evil.example/x>\\) \\<@1\\>**\nhttps://example.com/");
+  });
+
+  it("keeps balanced parentheses and drops trailing punctuation from URLs in the title", () => {
+    expect(
+      toMessageContent({ key: "k", title: "See https://en.wikipedia.org/wiki/Foo_(bar), https://a.example/x.", link: "https://example.com/" }),
+    ).toBe("**See <https://en.wikipedia.org/wiki/Foo_(bar)>, <https://a.example/x>.**\nhttps://example.com/");
   });
 
   it("normalizes the URL", () => {
